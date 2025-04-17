@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROF360 | Login</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Ícones Material -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            height: 100vh;
+        }
+        .login-card {
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            max-width: 420px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background-color: #0d6efd;
+        }
+        .spinner-border {
+            width: 1.2rem;
+            height: 1.2rem;
+            border-width: 0.15em;
+            display: none;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="d-flex align-items-center justify-content-center">
+    <div class="card login-card p-4 w-100 m-3">
+        <div class="text-center mb-4">
+            <div class="logo rounded-circle d-inline-flex align-items-center justify-content-center text-white fs-1 fw-bold mb-3">P360</div>
+            <h3 class="mb-1">PROF360</h3>
+            <p class="text-muted">Ferramentas inteligentes para professores</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail</label>
+                <input type="email" class="form-control py-2" id="email" placeholder="seu@email.com" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="password" class="form-label">Senha</label>
+                <div class="input-group">
+                    <input type="password" class="form-control py-2" id="password" placeholder="••••••••" required>
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                        <i class="material-icons">visibility</i>
+                    </button>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 py-2 mb-3" id="loginBtn">
+                <span id="btnText">Entrar</span>
+                <span id="spinner" class="spinner-border spinner-border-sm" role="status"></span>
+            </button>
+            
+            <div class="text-center text-muted my-3">ou</div>
+            
+            <button type="button" class="btn btn-outline-primary w-100 py-2" id="googleLoginBtn">
+                <img src="https://www.google.com/favicon.ico" width="20" class="me-2">
+                Entrar com Google
+            </button>
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="#" class="text-decoration-none">Esqueci minha senha</a>
+                <a href="#" class="text-decoration-none">Criar conta</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast align-items-center text-white bg-danger" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">Erro ao fazer login</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Supabase JS -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
+    <!-- Script principal -->
+    <script>
+        // 1. Configuração do Supabase
+        const supabaseUrl = 'https://xbabcjiwyynnknmivceo.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhiYWJjaml3eXlubmtubWl2Y2VvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5MDU2MzEsImV4cCI6MjA2MDQ4MTYzMX0.yQFxJMrNdQU2zxNjFHiQck6ISbEwsbaPYulZ7Mc-uvY';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 2. Elementos UI
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+        const togglePassword = document.getElementById('togglePassword');
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
+        const toast = new bootstrap.Toast(document.getElementById('toast'));
+
+        // 3. Funções auxiliares
+        function showError(message) {
+            document.getElementById('toastMessage').textContent = message;
+            toast.show();
+        }
+
+        function setLoading(isLoading) {
+            loginBtn.disabled = isLoading;
+            btnText.textContent = isLoading ? 'Autenticando...' : 'Entrar';
+            spinner.style.display = isLoading ? 'inline-block' : 'none';
+        }
+
+        // 4. Event Listeners
+        togglePassword.addEventListener('click', () => {
+            const password = document.getElementById('password');
+            const icon = togglePassword.querySelector('i');
+            password.type = password.type === 'password' ? 'text' : 'password';
+            icon.textContent = password.type === 'password' ? 'visibility' : 'visibility_off';
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            setLoading(true);
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                
+                if (error) throw error;
+                
+                window.location.href = '/dashboard.html';
+            } catch (error) {
+                console.error('Login error:', error);
+                showError(error.message || 'Erro ao fazer login');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        googleLoginBtn.addEventListener('click', async () => {
+            try {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: window.location.origin + '/dashboard.html' }
+                });
+                
+                if (error) throw error;
+            } catch (error) {
+                console.error('Google login error:', error);
+                showError('Falha ao entrar com Google');
+            }
+        });
+
+        // 5. Verificação inicial
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) window.location.href = '/dashboard.html';
+        });
+    </script>
+</body>
+</html>
